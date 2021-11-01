@@ -3,14 +3,22 @@ import six
 import subprocess
 
 
-def gpu_info():
-    gpus = [line for line in _run_cmd(['nvidia-smi', '-L']) if line]
+def gpu_info(test_case=None):
+    if test_case is None:
+        gpus = [line for line in _run_cmd(['nvidia-smi', '-L']) if line]
+    else:
+        gpus = [line for line in test_case.nvidia_smi_L if line]
+
     gpu_infos = [re.match('GPU ([0-9]+): ([^(]+) \(UUID: ([^)]+)\)', gpu) for gpu in gpus]
     gpu_infos = [info.groups() for info in gpu_infos if info is not None]
     gpu_infos = [dict(zip(['index', 'type', 'uuid'], info)) for info in gpu_infos]
-    gpu_count = len(gpus)
+    gpu_count = len(gpu_infos)
 
-    lines = _run_cmd(['nvidia-smi'])
+    if test_case is None:
+        lines = _run_cmd(['nvidia-smi'])
+    else:
+        lines = test_case.nvidia_smi
+
     cuda_version = float(lines[2].split('CUDA Version: ')[1].split(' ')[0])
     if cuda_version < 11:
         line_distance = 3
@@ -33,6 +41,7 @@ def _run_cmd(cmd):
     if six.PY3:
         output = output.decode('UTF-8')
     return output.split('\n')
+
 
 def available_gpus(max_used_percent=20.):
     return [gpu['index'] for gpu in gpu_info() if gpu['mem_used_percent'] <= max_used_percent]
